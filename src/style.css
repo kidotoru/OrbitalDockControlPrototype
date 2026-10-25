@@ -37,7 +37,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border-radius: 6px;
   background: rgba(8, 12, 24, 0.72);
   border: 1px solid var(--line);
-  transform: translateY(-6px);
 }
 .ship-label b { font-weight: 700; }
 .ship-label i { font-style: normal; color: var(--muted); }
@@ -64,8 +63,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .port-label.reserved { color: var(--warn); }
 .port-label.occupied { color: var(--bad); }
 .port-label.dim { opacity: 0.3; }
-.port-label.target { background: rgba(74, 222, 128, 0.25); animation: pulse 0.9s ease-in-out infinite; }
-@keyframes pulse { 50% { transform: scale(1.12); } }
+/* CSS2DRenderer が style.transform で位置を決めるため、ラベルには transform を使わない */
+.port-label.target { background: rgba(74, 222, 128, 0.25); animation: port-glow 0.9s ease-in-out infinite; }
+@keyframes port-glow { 50% { box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.45); background: rgba(74, 222, 128, 0.45); } }
 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
