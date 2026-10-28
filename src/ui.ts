@@ -63,7 +63,8 @@ export class UI {
             <li><b class="c-consumer">コンシューマー</b>はリソースを補給しに来る船です。1u あたり ${fmtPrice(ECONOMY.sellPrice)} で売ります。</li>
             <li>待機中の船を選び、サイズが合う空きポートを指定します（S &lt; M &lt; L。大きいポートには小型の船も入れます）。取引はドッキング中に少しずつ進み、終わったら出発許可を出します。</li>
             <li>在庫・クレジット・貯蔵庫の空きが尽きると、取引はその時点で打ち切られ、評判が下がります。待たせすぎた船は離脱します。衝突すると修理費がかかります。</li>
-            <li>評判が高いほど船がたくさん来ます。運用費 ${fmtPrice(ECONOMY.upkeepPerSec)}/秒 がかかり続け、クレジットがマイナスになると破産です。買い取りでは運転資金 ${fmtMoney(ECONOMY.reserve)} を残します。</li>
+            <li>ステーション自身も毎秒 ${ECONOMY.consumptionPerSec}u のリソースを消費します。<b>在庫が 0 になるとゲームオーバー</b>です。売りすぎにも注意してください。</li>
+            <li>評判が高いほど船がたくさん来ます。</li>
           </ul>
           <button class="primary" data-start>管制開始</button>
         </div>
@@ -111,11 +112,12 @@ export class UI {
   update() {
     const g = this.game;
     this.el.credit.textContent = fmtMoney(g.credit);
-    this.el.credit.classList.toggle('neg', g.credit < 100);
+    this.el.credit.classList.toggle('neg', g.credit < 0);
     this.el.stock.textContent = `${Math.floor(g.stock)} / ${g.capacity}u`;
     const fill = g.stock / g.capacity;
     this.el.stockBar.style.width = `${(fill * 100).toFixed(1)}%`;
-    this.el.stockBar.className = fill < 0.1 || fill > 0.9 ? 'bad' : fill < 0.25 || fill > 0.75 ? 'warn' : 'ok';
+    this.el.stockBar.className = fill < 0.1 ? 'bad' : fill < 0.25 || fill > 0.9 ? 'warn' : 'ok';
+    this.el.stock.classList.toggle('neg', fill < 0.1);
     this.el.rep.textContent = `${Math.round(g.reputation)}`;
     this.el.rep.className = g.reputation < 30 ? 'neg' : g.reputation < 50 ? 'warn' : '';
     this.el.clock.textContent = fmtTime(g.time);
@@ -296,13 +298,13 @@ export class UI {
     const margin = t.soldValue - t.boughtCost;
     this.el.over.innerHTML = `
       <div class="intro-card">
-        <h1>BANKRUPT</h1>
-        <p>クレジットが尽き、ステーションは破産しました。運営期間 ${fmtTime(g.time)}。</p>
+        <h1>RESOURCE DEPLETED</h1>
+        <p>リソースが尽き、ステーションは運用停止になりました。運営期間 ${fmtTime(g.time)}、最終クレジット ${fmtMoney(g.credit)}。</p>
         <dl class="trade summary">
           <div><dt>買い取り</dt><dd>${Math.round(t.bought)}u / −${fmtMoney(t.boughtCost)}</dd></div>
           <div><dt>販売</dt><dd>${Math.round(t.sold)}u / +${fmtMoney(t.soldValue)}</dd></div>
           <div><dt>売買差益</dt><dd>${fmtMoney(margin)}</dd></div>
-          <div><dt>運用費</dt><dd>−${fmtMoney(t.upkeep)}</dd></div>
+          <div><dt>ステーション消費</dt><dd>${Math.round(t.consumed)}u</dd></div>
           <div><dt>修理費</dt><dd>−${fmtMoney(t.fines)}</dd></div>
           <div><dt>出発 / 離脱 / 衝突</dt><dd>${g.completed} / ${g.missed} / ${g.collisions}</dd></div>
         </dl>

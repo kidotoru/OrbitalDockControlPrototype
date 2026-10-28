@@ -56,8 +56,8 @@ export class Game {
   stock = ECONOMY.startStock;
   readonly capacity = ECONOMY.capacity;
   reputation = REPUTATION.start;
-  /** 累計：買い取り・販売・運用費・罰金 */
-  totals = { bought: 0, boughtCost: 0, sold: 0, soldValue: 0, upkeep: 0, fines: 0 };
+  /** 累計：買い取り・販売・ステーション消費(u)・修理費 */
+  totals = { bought: 0, boughtCost: 0, sold: 0, soldValue: 0, consumed: 0, fines: 0 };
   gameOver = false;
   completed = 0;
   missed = 0;
@@ -229,10 +229,10 @@ export class Game {
     if (this.gameOver) return;
     this.time += dt;
 
-    // 運用費
-    const upkeep = ECONOMY.upkeepPerSec * dt;
-    this.credit -= upkeep;
-    this.totals.upkeep += upkeep;
+    // ステーション自身のリソース消費
+    const used = Math.min(this.stock, ECONOMY.consumptionPerSec * dt);
+    this.stock -= used;
+    this.totals.consumed += used;
 
     // 出現
     this.spawnTimer -= dt;
@@ -256,9 +256,10 @@ export class Game {
 
     this.checkProximity();
 
-    if (this.credit < 0) {
+    if (this.stock <= 0) {
+      this.stock = 0;
       this.gameOver = true;
-      this.addLog('クレジットが尽きました。ステーションは破産です', 'bad');
+      this.addLog('リソースが尽きました。ステーションは運用停止です', 'bad');
     }
 
     // 退場した機体を片付け
@@ -272,7 +273,7 @@ export class Game {
     let reason = '';
     if (s.role === 'supplier') {
       const room = this.capacity - this.stock;
-      const affordable = Math.max(0, this.credit - ECONOMY.reserve) / s.price;
+      const affordable = Math.max(0, this.credit) / s.price;
       if (room < amount) { amount = room; reason = '貯蔵庫が満杯'; }
       if (affordable < amount) { amount = affordable; reason = 'クレジット不足'; }
       amount = Math.max(0, amount);
