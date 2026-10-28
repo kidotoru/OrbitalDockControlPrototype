@@ -3,7 +3,7 @@ import type { World } from './world';
 import { buildStation, SIZE_RANK, type Port } from './station';
 import { Ship, ROLE_INFO, type Role, type Waypoint } from './ship';
 import type { Size } from './station';
-import { ECONOMY, SHIP_SIZE, REPUTATION, COLLISION_COST, spawnInterval, sellPrice } from './config';
+import { ECONOMY, SHIP_SIZE, REPUTATION, COLLISION_COST, SUPPLIER_RATIO, spawnInterval, sellPrice } from './config';
 
 export type LogKind = 'info' | 'good' | 'warn' | 'bad';
 export interface LogEntry { id: number; time: number; text: string; kind: LogKind }
@@ -343,9 +343,9 @@ export class Game {
     this.reputation = Math.min(100, Math.max(0, this.reputation + delta));
   }
 
-  /** サプライヤーとコンシューマーは完全ランダム（50%ずつ） */
+  /** サプライヤーは SUPPLIER_RATIO の確率、残りはコンシューマー（在庫には左右されない） */
   private pickRole(): Role {
-    return Math.random() < 0.5 ? 'consumer' : 'supplier';
+    return Math.random() < SUPPLIER_RATIO ? 'supplier' : 'consumer';
   }
 
   private spawn() {
