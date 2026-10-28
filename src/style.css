@@ -104,6 +104,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   overflow-y: auto;
   scrollbar-width: thin;
 }
+.ports-panel { top: auto; right: auto; left: 14px; bottom: 14px; width: 240px; overflow: visible; }
 .panel section { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; backdrop-filter: blur(6px); }
 .panel h3 { margin: 0 0 8px; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; }
 
@@ -189,8 +190,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
     background: linear-gradient(to top, rgba(2, 3, 10, 0.9), rgba(2, 3, 10, 0.6));
     gap: 8px;
   }
-  .ship-row, .port-row { padding: 8px; }
-  .ports { display: grid; grid-template-columns: repeat(3, 1fr); }
+  /* スマホでは下部シートの高さを固定し、その上の左端にポート一覧を置く */
+  .panel:not(.ports-panel) { height: 40vh; max-height: none; }
+  .ports-panel {
+    left: 8px; right: auto; bottom: calc(40vh + 6px);
+    width: min(300px, calc(100vw - 16px)); max-height: none;
+    padding: 0; background: none;
+  }
+  .ports-panel section { padding: 6px; }
+  .ports-panel h3 { display: none; }
+  .ship-row { padding: 8px; }
+  .port-row { padding: 5px 6px; font-size: 11px; }
+  .ports { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
   .assign button { flex-direction: row; justify-content: center; gap: 6px; padding: 9px 4px; }
   .prompt { margin: 6px 0; }
   .port-row { grid-template-columns: auto auto 1fr; gap: 4px; }

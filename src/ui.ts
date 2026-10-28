@@ -39,6 +39,8 @@ export class UI {
           <h3>交通</h3>
           <div class="traffic" data-k="traffic"></div>
         </section>
+      </aside>
+      <aside class="panel ports-panel">
         <section>
           <h3>ドッキングポート</h3>
           <div class="ports" data-k="ports"></div>
