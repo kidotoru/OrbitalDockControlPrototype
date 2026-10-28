@@ -3,7 +3,7 @@ import type { World } from './world';
 import { buildStation, SIZE_RANK, type Port } from './station';
 import { Ship, ROLE_INFO, type Role, type Waypoint } from './ship';
 import type { Size } from './station';
-import { ECONOMY, SHIP_SIZE, REPUTATION, COLLISION_COST, SUPPLIER_RATIO, spawnInterval, sellPrice } from './config';
+import { ECONOMY, SHIP_SIZE, REPUTATION, COLLISION_COST, spawnInterval, sellPrice, supplierRatio } from './config';
 
 export type LogKind = 'info' | 'good' | 'warn' | 'bad';
 export interface LogEntry { id: number; time: number; text: string; kind: LogKind }
@@ -101,6 +101,16 @@ export class Game {
   }
 
   // ---------- 参照 ----------
+
+  /** 今のサプライヤー出現率 */
+  get supplierRatio(): number {
+    return supplierRatio(this.time);
+  }
+
+  /** サプライヤー出現率の傾向（+1 上昇中 / −1 下降中） */
+  get supplierTrend(): number {
+    return Math.sign(supplierRatio(this.time + 2) - supplierRatio(this.time));
+  }
 
   /** 今の評判での販売単価 */
   get sellPrice(): number {
@@ -343,9 +353,9 @@ export class Game {
     this.reputation = Math.min(100, Math.max(0, this.reputation + delta));
   }
 
-  /** サプライヤーは SUPPLIER_RATIO の確率、残りはコンシューマー（在庫には左右されない） */
+  /** サプライヤーはその時点の出現率で、残りはコンシューマー（在庫には左右されない） */
   private pickRole(): Role {
-    return Math.random() < SUPPLIER_RATIO ? 'supplier' : 'consumer';
+    return Math.random() < this.supplierRatio ? 'supplier' : 'consumer';
   }
 
   private spawn() {

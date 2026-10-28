@@ -31,8 +31,24 @@ export const SHIP_SIZE: Record<Size, { cargo: number; rate: number; patience: nu
   M: { cargo: 150, rate: 12, patience: 55, length: 4 },
   L: { cargo: 300, rate: 18, patience: 70, length: 6 },
 };
-/** 出現する船のうちサプライヤーの割合（残りはコンシューマー） */
-export const SUPPLIER_RATIO = 0.5;
+/** 出現する船のうちサプライヤーの割合（残りはコンシューマー）。時間で min〜max を行き来する */
+export const SUPPLIER_RATIO = {
+  min: 0.1,
+  max: 0.5,
+  /** 大きな波の周期（秒）と、重ねる小さな波の周期（秒） */
+  period: 240,
+  subPeriod: 97,
+  /** 小さな波の強さ（0〜1）。大きいほど不規則に見える */
+  subWeight: 0.3,
+};
+
+/** 時刻 t（秒）でのサプライヤー出現率。開始時は中間値から上がり始める */
+export function supplierRatio(t: number): number {
+  const r = SUPPLIER_RATIO;
+  const w = (1 - r.subWeight) * Math.sin((2 * Math.PI * t) / r.period)
+    + r.subWeight * Math.sin((2 * Math.PI * t) / r.subPeriod);
+  return (r.min + r.max) / 2 + ((r.max - r.min) / 2) * w;
+}
 /** コンシューマーの取引量は、同じサイズのサプライヤーに対してこの割合 */
 export const CONSUMER_CARGO_RATIO = 0.25;
 /** 積載量のばらつき（±割合） */
