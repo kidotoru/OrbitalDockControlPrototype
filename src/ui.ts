@@ -32,7 +32,6 @@ export class UI {
           <div class="stat"><span>衝突</span><b data-k="crash">0</b></div>
         </div>
       </header>
-      <div class="log" data-k="log"></div>
       <aside class="panel">
         <section class="detail" data-k="detail"></section>
         <section>
@@ -40,12 +39,13 @@ export class UI {
           <div class="traffic" data-k="traffic"></div>
         </section>
       </aside>
-      <aside class="panel ports-panel">
-        <section>
+      <div class="left-col">
+        <section class="ports-panel">
           <h3>ドッキングポート</h3>
           <div class="ports" data-k="ports"></div>
         </section>
-      </aside>
+        <div class="log" data-k="log"></div>
+      </div>
       <div class="intro" data-k="intro">
         <div class="intro-card">
           <h1>ORBITAL DOCK CONTROL</h1>

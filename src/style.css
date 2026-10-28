@@ -86,7 +86,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .stat b { font-family: var(--mono); font-size: 16px; font-variant-numeric: tabular-nums; }
 .stat b.neg { color: var(--bad); }
 
-.log { position: absolute; top: 64px; left: 14px; display: flex; flex-direction: column; gap: 6px; max-width: min(420px, 60vw); pointer-events: none; }
+/* 左上：ドッキングポート一覧、その下にログ */
+.left-col {
+  position: absolute; top: 64px; left: 14px;
+  width: min(420px, 60vw);
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+  pointer-events: none;
+}
+.left-col > .ports-panel { pointer-events: auto; width: 240px; }
+.log { display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .toast {
   font-size: 12px; padding: 6px 10px; border-radius: 6px;
   background: var(--bg); border-left: 3px solid var(--info);
@@ -104,9 +112,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   overflow-y: auto;
   scrollbar-width: thin;
 }
-.ports-panel { top: auto; right: auto; left: 14px; bottom: 14px; width: 240px; overflow: visible; }
-.panel section { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; backdrop-filter: blur(6px); }
-.panel h3 { margin: 0 0 8px; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; }
+.panel section, .ports-panel { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; backdrop-filter: blur(6px); }
+.panel h3, .ports-panel h3 { margin: 0 0 8px; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; }
 
 .detail .hint { color: var(--muted); font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
 .detail .hint small { font-size: 11px; opacity: 0.8; }
@@ -180,9 +187,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .brand { display: none; }
   .stats { gap: 10px; }
   .stat b { font-size: 14px; }
-  .log { top: 58px; left: 12px; max-width: calc(100vw - 24px); gap: 4px; }
+  .left-col { top: 58px; left: 8px; width: calc(100vw - 16px); gap: 6px; }
+  .log { gap: 4px; }
   .toast { font-size: 11px; padding: 4px 8px; }
-  .toast:nth-child(n+4) { display: none; }
+  .toast:nth-child(n+3) { display: none; }
   .panel {
     top: auto; left: 0; right: 0; bottom: 0;
     width: auto; max-height: 44vh;
@@ -190,14 +198,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     background: linear-gradient(to top, rgba(2, 3, 10, 0.9), rgba(2, 3, 10, 0.6));
     gap: 8px;
   }
-  /* スマホでは下部シートの高さを固定し、その上の左端にポート一覧を置く */
-  .panel:not(.ports-panel) { height: 40vh; max-height: none; }
-  .ports-panel {
-    left: 8px; right: auto; bottom: calc(40vh + 6px);
-    width: min(300px, calc(100vw - 16px)); max-height: none;
-    padding: 0; background: none;
-  }
-  .ports-panel section { padding: 6px; }
+  .left-col > .ports-panel { width: min(300px, 100%); padding: 6px; }
   .ports-panel h3 { display: none; }
   .ship-row { padding: 8px; }
   .port-row { padding: 5px 6px; font-size: 11px; }
