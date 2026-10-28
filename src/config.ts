@@ -33,11 +33,11 @@ export const CARGO_JITTER = 0.15;
 export const REPUTATION = {
   start: 70,
   /** 予定量どおりに取引できた */
-  fullTrade: +3,
+  fullTrade: +1,
   /** 部分取引で出発（不足量の割合に比例。最大値） */
   partialTrade: -6,
-  /** 待ちきれずに離脱（戦略的に待たせて帰すこともあるので小さめ） */
-  leave: -1,
+  /** 待ちきれずに離脱（戦略的に待たせて帰すこともあるので、部分取引より軽め） */
+  leave: -3,
   /** 衝突事故 */
   collision: -15,
 };
