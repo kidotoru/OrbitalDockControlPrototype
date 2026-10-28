@@ -31,7 +31,7 @@ export const SHIP_SIZE: Record<Size, { cargo: number; rate: number; patience: nu
 export const CARGO_JITTER = 0.15;
 
 export const REPUTATION = {
-  start: 70,
+  start: 20,
   /** 予定量どおりに取引できた */
   fullTrade: +1,
   /** 部分取引で出発（不足量の割合に比例。最大値） */
