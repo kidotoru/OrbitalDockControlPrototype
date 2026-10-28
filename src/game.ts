@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import type { World } from './world';
 import { buildStation, SIZE_RANK, type Port } from './station';
-import { Ship, SHIP_TYPES, type ShipType, type Waypoint } from './ship';
+import { Ship, ROLE_INFO, type Role, type Waypoint } from './ship';
+import type { Size } from './station';
+import { ECONOMY, SHIP_SIZE, REPUTATION, COLLISION_COST, spawnInterval } from './config';
 
 export type LogKind = 'info' | 'good' | 'warn' | 'bad';
 export interface LogEntry { id: number; time: number; text: string; kind: LogKind }
@@ -20,6 +22,8 @@ const AXES = [
 ];
 const PREFIXES = ['KPL', 'ARX', 'NOV', 'VEG', 'LYR', 'ORN', 'HLX', 'TAU', 'CYG', 'DRA'];
 const DEG = Math.PI / 180;
+
+export const fmtMoney = (v: number) => `${v < 0 ? '−' : ''}$${Math.abs(Math.round(v)).toLocaleString('en-US')}`;
 
 /** 方向を球殻上で補間しながら from→to の経由点を作る（ステーションを避けて回り込む） */
 function arcPoints(from: THREE.Vector3, to: THREE.Vector3, speed: number): Waypoint[] {
@@ -46,7 +50,15 @@ export class Game {
   readonly ports: Port[];
   ships: Ship[] = [];
   time = 0;
-  score = 0;
+  /** ステーションの所持クレジット */
+  credit = ECONOMY.startCredit;
+  /** ステーションのリソース在庫 */
+  stock = ECONOMY.startStock;
+  readonly capacity = ECONOMY.capacity;
+  reputation = REPUTATION.start;
+  /** 累計：買い取り・販売・運用費・罰金 */
+  totals = { bought: 0, boughtCost: 0, sold: 0, soldValue: 0, upkeep: 0, fines: 0 };
+  gameOver = false;
   completed = 0;
   missed = 0;
   collisions = 0;
@@ -105,7 +117,7 @@ export class Game {
   canAssign(ship: Ship, port: Port): boolean {
     return (ship.state === 'holding' || ship.state === 'arriving')
       && port.state === 'free'
-      && SIZE_RANK[ship.type.size] <= SIZE_RANK[port.size];
+      && SIZE_RANK[ship.size] <= SIZE_RANK[port.size];
   }
 
   // ---------- プレイヤー操作 ----------
@@ -125,7 +137,7 @@ export class Game {
     ship.state = 'approaching';
 
     const n = port.normal;
-    const L = ship.type.length;
+    const L = ship.length;
     const gate = port.position.clone().addScaledVector(n, GATE_DIST);
     const app = port.position.clone().addScaledVector(n, APPROACH_DIST);
     const dock = port.position.clone().addScaledVector(n, L / 2);
@@ -148,10 +160,7 @@ export class Game {
       ship.state = 'docked';
       ship.speed = 0;
       port.state = 'occupied';
-      const [a, b] = ship.type.service;
-      ship.serviceMax = a + Math.random() * (b - a);
-      ship.service = ship.serviceMax;
-      this.addLog(`${ship.callsign} が ${port.id} にドッキング`, 'info');
+      this.addLog(`${ship.callsign} が ${port.id} にドッキング、取引開始`, 'info');
     });
     this.addLog(`${ship.callsign} に ${port.id} への進入を許可`, 'info');
     return true;
@@ -166,7 +175,6 @@ export class Game {
     const gate = port.position.clone().addScaledVector(n, GATE_DIST);
     const exit = gate.clone().setLength(SPAWN_R + 20);
     const facePort = n.clone().negate();
-    const wait = ship.readyWait;
 
     ship.state = 'departing';
     ship.speed = 0;
@@ -185,11 +193,8 @@ export class Game {
       () => { ship.state = 'gone'; },
     );
 
-    const delay = Math.max(0, wait - 15);
-    const pts = Math.max(20, Math.round(100 - delay * 3));
-    this.score += pts;
     this.completed++;
-    this.addLog(`${ship.callsign} 出発許可 +${pts}${delay > 0 ? `（遅延 ${Math.round(delay)}s）` : ''}`, 'good');
+    this.addLog(`${ship.callsign} 出発許可（${port.id}）`, 'info');
     return true;
   }
 
@@ -203,7 +208,7 @@ export class Game {
     }
     if (sel && (sel.state === 'holding' || sel.state === 'arriving')) {
       if (port.state !== 'free') this.addLog(`${port.id} は使用中です`, 'warn');
-      else this.addLog(`${sel.callsign}（${sel.type.size}）は ${port.id}（${port.size}）に入りません`, 'warn');
+      else this.addLog(`${sel.callsign}（${sel.size}）は ${port.id}（${port.size}）に入りません`, 'warn');
       return;
     }
     if (port.shipId != null) this.select(port.shipId);
@@ -212,7 +217,7 @@ export class Game {
   // ---------- 進行 ----------
 
   update(realDt: number) {
-    const dt = this.paused ? 0 : realDt;
+    const dt = this.paused || this.gameOver ? 0 : realDt;
     if (dt > 0) {
       const n = Math.ceil(dt / 0.04);
       for (let i = 0; i < n; i++) this.step(dt / n);
@@ -221,15 +226,20 @@ export class Game {
   }
 
   private step(dt: number) {
+    if (this.gameOver) return;
     this.time += dt;
+
+    // 運用費
+    const upkeep = ECONOMY.upkeepPerSec * dt;
+    this.credit -= upkeep;
+    this.totals.upkeep += upkeep;
 
     // 出現
     this.spawnTimer -= dt;
     const waiting = this.ships.filter((s) => s.state === 'arriving' || s.state === 'holding').length;
     if (this.spawnTimer <= 0) {
       if (waiting < MAX_WAITING) this.spawn();
-      const interval = Math.max(8, 20 - this.time / 30);
-      this.spawnTimer = interval * (0.7 + Math.random() * 0.6);
+      this.spawnTimer = spawnInterval(this.time, this.reputation) * (0.7 + Math.random() * 0.6);
     }
 
     for (const s of this.ships) {
@@ -238,13 +248,7 @@ export class Game {
         s.patience -= dt;
         if (s.patience <= 0) this.shipGivesUp(s);
       } else if (s.state === 'docked') {
-        s.service -= dt;
-        if (s.service <= 0) {
-          s.service = 0;
-          s.state = 'ready';
-          s.readyWait = 0;
-          this.addLog(`${s.callsign} 出発準備完了（${s.portId}）`, 'info');
-        }
+        this.trade(s, dt);
       } else if (s.state === 'ready') {
         s.readyWait += dt;
       }
@@ -252,15 +256,94 @@ export class Game {
 
     this.checkProximity();
 
+    if (this.credit < 0) {
+      this.gameOver = true;
+      this.addLog('クレジットが尽きました。ステーションは破産です', 'bad');
+    }
+
     // 退場した機体を片付け
     for (const s of this.ships.filter((x) => x.state === 'gone')) this.removeShip(s);
   }
 
+  /** ドッキング中の取引を1ステップ進める */
+  private trade(s: Ship, dt: number) {
+    const remaining = s.cargo - s.transferred;
+    let amount = Math.min(SHIP_SIZE[s.size].rate * dt, remaining);
+    let reason = '';
+    if (s.role === 'supplier') {
+      const room = this.capacity - this.stock;
+      const affordable = Math.max(0, this.credit - ECONOMY.reserve) / s.price;
+      if (room < amount) { amount = room; reason = '貯蔵庫が満杯'; }
+      if (affordable < amount) { amount = affordable; reason = 'クレジット不足'; }
+      amount = Math.max(0, amount);
+      const cost = amount * s.price;
+      this.stock += amount;
+      this.credit -= cost;
+      this.totals.bought += amount;
+      this.totals.boughtCost += cost;
+      s.value += cost;
+    } else {
+      if (this.stock < amount) { amount = this.stock; reason = '在庫不足'; }
+      amount = Math.max(0, amount);
+      const income = amount * s.price;
+      this.stock -= amount;
+      this.credit += income;
+      this.totals.sold += amount;
+      this.totals.soldValue += income;
+      s.value += income;
+    }
+    s.transferred += amount;
+
+    if (s.transferred >= s.cargo - 1e-6) {
+      s.transferred = s.cargo;
+      this.finishTrade(s, false);
+      return;
+    }
+    // 1ステップで動かせる量の1割未満しか動かなければ「停止」とみなす
+    if (amount < SHIP_SIZE[s.size].rate * dt * 0.1) {
+      if (s.stalled === 0) this.addLog(`${s.callsign} の取引が停止：${reason}`, 'warn');
+      s.stalled += dt;
+      s.stallReason = reason;
+      if (s.stalled >= ECONOMY.stallGrace) this.finishTrade(s, true);
+    } else {
+      s.stalled = 0;
+      s.stallReason = '';
+    }
+  }
+
+  private finishTrade(s: Ship, partial: boolean) {
+    s.state = 'ready';
+    s.readyWait = 0;
+    const units = Math.round(s.transferred);
+    const verb = s.role === 'supplier' ? '買い取り' : '販売';
+    const money = s.role === 'supplier' ? `−${fmtMoney(s.value)}` : `+${fmtMoney(s.value)}`;
+    if (partial) {
+      const shortfall = 1 - s.progress;
+      const delta = REPUTATION.partialTrade * shortfall;
+      this.changeReputation(delta);
+      this.addLog(`${s.callsign} ${verb} ${units}/${s.cargo}u ${money}（${s.stallReason}・評判 ${delta.toFixed(1)}）`, 'warn');
+    } else {
+      this.changeReputation(REPUTATION.fullTrade);
+      this.addLog(`${s.callsign} ${verb} ${units}u ${money}`, 'good');
+    }
+  }
+
+  private changeReputation(delta: number) {
+    this.reputation = Math.min(100, Math.max(0, this.reputation + delta));
+  }
+
+  /** 在庫が多いほどコンシューマーが、少ないほどサプライヤーが来やすい */
+  private pickRole(): Role {
+    const fill = this.stock / this.capacity;
+    return Math.random() < 0.3 + 0.4 * fill ? 'consumer' : 'supplier';
+  }
+
   private spawn() {
     const r = Math.random();
-    const type: ShipType = r < 0.4 ? SHIP_TYPES[0] : r < 0.75 ? SHIP_TYPES[1] : SHIP_TYPES[2];
+    const size: Size = r < 0.4 ? 'S' : r < 0.75 ? 'M' : 'L';
+    const role = this.pickRole();
     const dir = this.pickHoldDir();
-    const ship = new Ship(this.nextId++, this.makeCallsign(), type, dir);
+    const ship = new Ship(this.nextId++, this.makeCallsign(), role, size, dir);
     ship.position.copy(dir).multiplyScalar(SPAWN_R);
     ship.body.lookAt(ship.position.clone().negate());
     const hold = dir.clone().multiplyScalar(HOLD_R);
@@ -279,7 +362,7 @@ export class Game {
     this.ships.push(ship);
     this.world.scene.add(ship.root);
     this.world.scene.add(ship.pathLine);
-    this.addLog(`${ship.callsign}（${type.label}・${type.size}）接近中`, 'info');
+    this.addLog(`${ship.callsign}（${ROLE_INFO[role].label}・${size}・${ship.cargo}u）接近中`, 'info');
   }
 
   private pickHoldDir(): THREE.Vector3 {
@@ -313,9 +396,9 @@ export class Game {
     s.state = 'leaving';
     s.patience = 0;
     s.setPath([{ p: s.position.clone().setLength(SPAWN_R + 20), speed: 12 }], () => { s.state = 'gone'; });
-    this.score -= 80;
+    this.changeReputation(REPUTATION.leave);
     this.missed++;
-    this.addLog(`${s.callsign} が待ちきれず離脱 −80`, 'bad');
+    this.addLog(`${s.callsign} が待ちきれず離脱（評判 ${REPUTATION.leave}）`, 'bad');
   }
 
   private checkProximity() {
@@ -343,9 +426,11 @@ export class Game {
       list.forEach((s) => mid.add(s.position));
       mid.divideScalar(list.length);
       this.explode(mid);
-      this.score -= 250;
+      this.credit -= COLLISION_COST;
+      this.totals.fines += COLLISION_COST;
+      this.changeReputation(REPUTATION.collision);
       this.collisions++;
-      this.addLog(`衝突事故！ ${list.map((s) => s.callsign).join(' / ')} −250`, 'bad');
+      this.addLog(`衝突事故！ ${list.map((s) => s.callsign).join(' / ')} 修理費 −${fmtMoney(COLLISION_COST)}`, 'bad');
       for (const s of list) this.removeShip(s);
     }
 
@@ -399,7 +484,7 @@ export class Game {
       this.selRing.visible = true;
       this.selRing.position.copy(sel.position);
       this.selRing.quaternion.copy(this.world.camera.quaternion);
-      const sc = Math.max(2.4, sel.type.length * 0.85) * (1 + 0.06 * Math.sin(this.pulse * 5));
+      const sc = Math.max(2.4, sel.length * 0.85) * (1 + 0.06 * Math.sin(this.pulse * 5));
       this.selRing.scale.setScalar(sc);
     } else {
       this.selRing.visible = false;

@@ -1,21 +1,27 @@
-import type { Game } from './game';
-import { STATE_LABEL, type Ship } from './ship';
+import { fmtMoney, type Game } from './game';
+import { ECONOMY } from './config';
+import { ROLE_INFO, STATE_LABEL, type Ship } from './ship';
 
 const fmtTime = (t: number) => {
   const m = Math.floor(t / 60);
   const s = Math.floor(t % 60);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
+const fmtPrice = (v: number) => `$${v.toFixed(2)}`;
 
 const STATE_ORDER: Record<string, number> = { ready: 0, holding: 1, arriving: 2, approaching: 3, docked: 4, departing: 5, leaving: 6 };
 
+type ElKey = 'credit' | 'stock' | 'stockBar' | 'rep' | 'clock' | 'done' | 'missed' | 'crash'
+  | 'traffic' | 'detail' | 'ports' | 'log' | 'intro' | 'over';
+
 export class UI {
   private game: Game;
-  private el = {} as Record<'score' | 'clock' | 'done' | 'missed' | 'crash' | 'traffic' | 'detail' | 'ports' | 'log' | 'intro', HTMLElement>;
+  private el = {} as Record<ElKey, HTMLElement>;
   private rows = new Map<number, HTMLElement>();
   private portRows = new Map<string, HTMLElement>();
   private detailSig = '';
   private shownLog = 0;
+  private overShown = false;
 
   constructor(game: Game) {
     this.game = game;
@@ -25,11 +31,13 @@ export class UI {
       <header class="topbar">
         <div class="brand">ORBITAL DOCK CONTROL</div>
         <div class="stats">
-          <div class="stat"><span>スコア</span><b data-k="score">0</b></div>
+          <div class="stat money"><span>クレジット</span><b data-k="credit">$0</b></div>
+          <div class="stat stock"><span>リソース在庫</span><b data-k="stock">0</b><i class="meter"><i data-k="stockBar"></i></i></div>
+          <div class="stat"><span>評判</span><b data-k="rep">0</b></div>
           <div class="stat"><span>経過</span><b data-k="clock">00:00</b></div>
-          <div class="stat"><span>出発</span><b data-k="done">0</b></div>
-          <div class="stat"><span>離脱</span><b data-k="missed">0</b></div>
-          <div class="stat"><span>衝突</span><b data-k="crash">0</b></div>
+          <div class="stat minor"><span>出発</span><b data-k="done">0</b></div>
+          <div class="stat minor"><span>離脱</span><b data-k="missed">0</b></div>
+          <div class="stat minor"><span>衝突</span><b data-k="crash">0</b></div>
         </div>
       </header>
       <aside class="panel">
@@ -49,16 +57,18 @@ export class UI {
       <div class="intro" data-k="intro">
         <div class="intro-card">
           <h1>ORBITAL DOCK CONTROL</h1>
-          <p>軌道ステーションの管制官として、到着する宇宙機をドッキングポートへ誘導し、作業を終えた機体に出発許可を出してください。</p>
+          <p>軌道ステーションの管制官として、リソースを仕入れて売り、ステーションのクレジットを増やしてください。</p>
           <ul>
-            <li><b>待機中</b>の機体を選び、<b>サイズが合う空きポート</b>（S &lt; M &lt; L、大きいポートは小型機も可）を指定します。</li>
-            <li>作業が終わると<b>出発待ち</b>になります。早めに出発許可を出すほど高得点です。</li>
-            <li>待たせすぎると機体は離脱します。経路が交差すると<b>接近警報</b>、ぶつかると衝突事故です。</li>
-            <li>ドラッグで視点回転、ホイール／ピンチでズーム。ラベルやポートはタップで選択できます。</li>
+            <li><b class="c-supplier">サプライヤー</b>はリソースを運んでくる船です。1u あたり ${fmtPrice(ECONOMY.buyPrice[0])}〜${fmtPrice(ECONOMY.buyPrice[1])} で買い取ります。</li>
+            <li><b class="c-consumer">コンシューマー</b>はリソースを補給しに来る船です。1u あたり ${fmtPrice(ECONOMY.sellPrice)} で売ります。</li>
+            <li>待機中の船を選び、サイズが合う空きポートを指定します（S &lt; M &lt; L。大きいポートには小型の船も入れます）。取引はドッキング中に少しずつ進み、終わったら出発許可を出します。</li>
+            <li>在庫・クレジット・貯蔵庫の空きが尽きると、取引はその時点で打ち切られ、評判が下がります。待たせすぎた船は離脱します。衝突すると修理費がかかります。</li>
+            <li>評判が高いほど船がたくさん来ます。運用費 ${fmtPrice(ECONOMY.upkeepPerSec)}/秒 がかかり続け、クレジットがマイナスになると破産です。買い取りでは運転資金 ${fmtMoney(ECONOMY.reserve)} を残します。</li>
           </ul>
           <button class="primary" data-start>管制開始</button>
         </div>
-      </div>`;
+      </div>
+      <div class="intro over" data-k="over" hidden></div>`;
     document.body.appendChild(hud);
     hud.querySelectorAll<HTMLElement>('[data-k]').forEach((e) => {
       (this.el as Record<string, HTMLElement>)[e.dataset.k!] = e;
@@ -68,7 +78,6 @@ export class UI {
       this.el.intro.remove();
       game.paused = false;
     });
-
 
     // 詳細パネルのボタン
     this.el.detail.addEventListener('click', (e) => {
@@ -97,13 +106,18 @@ export class UI {
       this.el.ports.appendChild(row);
       this.portRows.set(p.id, row);
     }
-
   }
 
   update() {
     const g = this.game;
-    this.el.score.textContent = String(g.score);
-    this.el.score.classList.toggle('neg', g.score < 0);
+    this.el.credit.textContent = fmtMoney(g.credit);
+    this.el.credit.classList.toggle('neg', g.credit < 100);
+    this.el.stock.textContent = `${Math.floor(g.stock)} / ${g.capacity}u`;
+    const fill = g.stock / g.capacity;
+    this.el.stockBar.style.width = `${(fill * 100).toFixed(1)}%`;
+    this.el.stockBar.className = fill < 0.1 || fill > 0.9 ? 'bad' : fill < 0.25 || fill > 0.75 ? 'warn' : 'ok';
+    this.el.rep.textContent = `${Math.round(g.reputation)}`;
+    this.el.rep.className = g.reputation < 30 ? 'neg' : g.reputation < 50 ? 'warn' : '';
     this.el.clock.textContent = fmtTime(g.time);
     this.el.done.textContent = String(g.completed);
     this.el.missed.textContent = String(g.missed);
@@ -113,6 +127,7 @@ export class UI {
     this.updatePorts();
     this.updateDetail();
     this.updateLog();
+    if (g.gameOver && !this.overShown) this.showGameOver();
   }
 
   private barFor(s: Ship): { pct: number; tone: string } | null {
@@ -120,11 +135,8 @@ export class UI {
       const pct = s.patience / s.patienceMax;
       return { pct, tone: pct < 0.25 ? 'bad' : pct < 0.5 ? 'warn' : 'ok' };
     }
-    if (s.state === 'docked') return { pct: 1 - s.service / s.serviceMax, tone: 'info' };
-    if (s.state === 'ready') {
-      const pct = Math.max(0, 1 - s.readyWait / 40);
-      return { pct, tone: s.readyWait > 20 ? 'bad' : s.readyWait > 12 ? 'warn' : 'ok' };
-    }
+    if (s.state === 'docked') return { pct: s.progress, tone: s.stalled > 0 ? 'bad' : 'info' };
+    if (s.state === 'ready') return { pct: s.progress, tone: s.progress < 0.999 ? 'warn' : 'ok' };
     return null;
   }
 
@@ -139,22 +151,22 @@ export class UI {
       let row = this.rows.get(s.id);
       if (!row) {
         row = document.createElement('button');
-        row.className = 'ship-row';
-        row.innerHTML = `<span class="cs"></span><span class="sz"></span><span class="st"></span><span class="bar"><i></i></span>`;
+        row.innerHTML = `<em class="role ${s.role}">${ROLE_INFO[s.role].short}</em><span class="cs"></span><span class="sz"></span><span class="st"></span><span class="bar"><i></i></span>`;
         row.addEventListener('click', () => g.select(s.id));
         this.rows.set(s.id, row);
       }
       if (this.el.traffic.children[i] !== row) this.el.traffic.insertBefore(row, this.el.traffic.children[i] ?? null);
       const warn = g.warnings.has(s.id);
       row.className = `ship-row s-${s.state}${s.id === g.selectedId ? ' selected' : ''}${warn ? ' warn' : ''}`;
-      (row.children[0] as HTMLElement).textContent = s.callsign;
-      (row.children[1] as HTMLElement).textContent = s.type.size;
+      (row.children[1] as HTMLElement).textContent = s.callsign;
+      (row.children[2] as HTMLElement).textContent = s.size;
       let st = STATE_LABEL[s.state];
       if (s.portId && (s.state === 'approaching' || s.state === 'docked' || s.state === 'ready' || s.state === 'departing')) st += ` ${s.portId}`;
+      if (s.state === 'docked' && s.stalled > 0) st += ' 停止';
       if (warn) st = '⚠ ' + st;
-      (row.children[2] as HTMLElement).textContent = st;
+      (row.children[3] as HTMLElement).textContent = st;
       const bar = this.barFor(s);
-      const barEl = row.children[3] as HTMLElement;
+      const barEl = row.children[4] as HTMLElement;
       barEl.style.visibility = bar ? 'visible' : 'hidden';
       if (bar) {
         const i2 = barEl.firstElementChild as HTMLElement;
@@ -185,6 +197,25 @@ export class UI {
     }
   }
 
+  /** 取引の見込み・進み具合 */
+  private tradeBlock(s: Ship): string {
+    const verb = s.role === 'supplier' ? '買い取り' : '販売';
+    const sign = s.role === 'supplier' ? '−' : '+';
+    if (s.state === 'holding' || s.state === 'arriving' || s.state === 'approaching') {
+      return `<dl class="trade">
+        <div><dt>${verb}予定</dt><dd>${s.cargo}u</dd></div>
+        <div><dt>単価</dt><dd>${fmtPrice(s.price)}</dd></div>
+        <div><dt>金額</dt><dd class="${s.role}">${sign}${fmtMoney(s.plannedValue)}</dd></div>
+      </dl>`;
+    }
+    return `<dl class="trade">
+      <div><dt>${verb}</dt><dd data-live="units"></dd></div>
+      <div><dt>単価</dt><dd>${fmtPrice(s.price)}</dd></div>
+      <div><dt>金額</dt><dd class="${s.role}" data-live="value"></dd></div>
+    </dl>
+    <div class="progress"><i data-live="bar"></i></div>`;
+  }
+
   private updateDetail() {
     const g = this.game;
     const s = g.selected;
@@ -205,9 +236,10 @@ export class UI {
         } else if (s.state === 'approaching') {
           body = `<p class="prompt">${s.portId} へ進入中</p>`;
         } else if (s.state === 'docked') {
-          body = `<p class="prompt">${s.portId} で作業中 <b data-live="service"></b></p>`;
+          body = `<p class="prompt">${s.portId} で取引中 <b data-live="status"></b></p>`;
         } else if (s.state === 'ready') {
-          body = `<p class="prompt">${s.portId} で出発許可待ち <b data-live="wait"></b></p><button class="primary depart" data-depart>出発許可</button>`;
+          const partial = s.progress < 0.999;
+          body = `<p class="prompt">${s.portId} で出発許可待ち${partial ? ' <b class="warn">部分取引</b>' : ''}</p><button class="primary depart" data-depart>出発許可</button>`;
         } else if (s.state === 'departing') {
           body = `<p class="prompt">出発中</p>`;
         } else if (s.state === 'leaving') {
@@ -215,17 +247,30 @@ export class UI {
         }
         this.el.detail.innerHTML = `
           <div class="dhead">
-            <div><b class="cs">${s.callsign}</b><span class="tag">${s.type.label}</span><span class="tag sz">${s.type.size}</span></div>
+            <div><b class="cs">${s.callsign}</b><span class="tag ${s.role}">${ROLE_INFO[s.role].label}</span><span class="tag sz">${s.size}</span></div>
             <button class="x" data-deselect aria-label="選択解除">×</button>
           </div>
+          ${s.state === 'leaving' ? '' : this.tradeBlock(s)}
           ${body}`;
       }
     }
     if (s) {
-      const sv = this.el.detail.querySelector('[data-live="service"]');
-      if (sv) sv.textContent = `残り ${Math.ceil(s.service)}s`;
-      const wv = this.el.detail.querySelector('[data-live="wait"]');
-      if (wv) wv.textContent = `待機 ${Math.floor(s.readyWait)}s`;
+      const q = (k: string) => this.el.detail.querySelector<HTMLElement>(`[data-live="${k}"]`);
+      const sign = s.role === 'supplier' ? '−' : '+';
+      const units = q('units');
+      if (units) units.textContent = `${Math.floor(s.transferred)} / ${s.cargo}u`;
+      const value = q('value');
+      if (value) value.textContent = `${sign}${fmtMoney(s.value)}`;
+      const bar = q('bar');
+      if (bar) {
+        bar.style.width = `${(s.progress * 100).toFixed(1)}%`;
+        bar.className = s.stalled > 0 ? 'bad' : s.state === 'ready' && s.progress < 0.999 ? 'warn' : '';
+      }
+      const status = q('status');
+      if (status) {
+        status.textContent = s.stalled > 0 ? `停止：${s.stallReason}` : `${Math.round(s.progress * 100)}%`;
+        status.classList.toggle('bad', s.stalled > 0);
+      }
     }
   }
 
@@ -242,5 +287,28 @@ export class UI {
       setTimeout(() => d.remove(), 5200);
     }
     while (this.el.log.children.length > 5) this.el.log.lastElementChild!.remove();
+  }
+
+  private showGameOver() {
+    this.overShown = true;
+    const g = this.game;
+    const t = g.totals;
+    const margin = t.soldValue - t.boughtCost;
+    this.el.over.innerHTML = `
+      <div class="intro-card">
+        <h1>BANKRUPT</h1>
+        <p>クレジットが尽き、ステーションは破産しました。運営期間 ${fmtTime(g.time)}。</p>
+        <dl class="trade summary">
+          <div><dt>買い取り</dt><dd>${Math.round(t.bought)}u / −${fmtMoney(t.boughtCost)}</dd></div>
+          <div><dt>販売</dt><dd>${Math.round(t.sold)}u / +${fmtMoney(t.soldValue)}</dd></div>
+          <div><dt>売買差益</dt><dd>${fmtMoney(margin)}</dd></div>
+          <div><dt>運用費</dt><dd>−${fmtMoney(t.upkeep)}</dd></div>
+          <div><dt>修理費</dt><dd>−${fmtMoney(t.fines)}</dd></div>
+          <div><dt>出発 / 離脱 / 衝突</dt><dd>${g.completed} / ${g.missed} / ${g.collisions}</dd></div>
+        </dl>
+        <button class="primary" data-restart>もう一度</button>
+      </div>`;
+    this.el.over.hidden = false;
+    this.el.over.querySelector('[data-restart]')!.addEventListener('click', () => location.reload());
   }
 }

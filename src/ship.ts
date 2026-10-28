@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import type { Size } from './station';
+import { SHIP_SIZE, CARGO_JITTER, ECONOMY } from './config';
 
 export type ShipState =
   | 'arriving'    // 到着中（待機ポイントへ移動）
@@ -16,28 +17,20 @@ export const STATE_LABEL: Record<ShipState, string> = {
   arriving: '到着中',
   holding: '待機中',
   approaching: '進入中',
-  docked: '作業中',
+  docked: '取引中',
   ready: '出発待ち',
   departing: '出発中',
   leaving: '離脱',
   gone: '—',
 };
 
-export interface ShipType {
-  kind: string;
-  label: string;
-  size: Size;
-  length: number;
-  color: number;
-  service: [number, number];
-  patience: number;
-}
+/** supplier: ステーションにリソースを売りに来る / consumer: ステーションからリソースを買いに来る */
+export type Role = 'supplier' | 'consumer';
 
-export const SHIP_TYPES: ShipType[] = [
-  { kind: 'courier', label: 'クーリエ', size: 'S', length: 2.6, color: 0x6fe3a4, service: [10, 16], patience: 45 },
-  { kind: 'crew', label: '有人機', size: 'M', length: 4, color: 0x8ec5ff, service: [16, 24], patience: 55 },
-  { kind: 'cargo', label: '貨物船', size: 'L', length: 6, color: 0xffb35c, service: [24, 34], patience: 70 },
-];
+export const ROLE_INFO: Record<Role, { label: string; short: string; color: number }> = {
+  supplier: { label: 'サプライヤー', short: '供給', color: 0xffb35c },
+  consumer: { label: 'コンシューマー', short: '補給', color: 0x5fd4ff },
+};
 
 export interface Waypoint {
   p: THREE.Vector3;
@@ -59,7 +52,9 @@ const UP_X = new THREE.Vector3(1, 0, 0);
 export class Ship {
   readonly id: number;
   readonly callsign: string;
-  readonly type: ShipType;
+  readonly role: Role;
+  readonly size: Size;
+  readonly length: number;
   state: ShipState = 'arriving';
 
   /** 位置のみ（ラベルはここにぶら下げて回転させない） */
@@ -78,27 +73,44 @@ export class Ship {
 
   patience: number;
   readonly patienceMax: number;
-  service = 0;
-  serviceMax = 0;
+  /** 予定取引量（u） */
+  readonly cargo: number;
+  /** 取引単価（$/u）。サプライヤーは買い取り価格、コンシューマーは販売価格 */
+  readonly price: number;
+  /** 取引済み量（u） */
+  transferred = 0;
+  /** 取引済み金額（$） */
+  value = 0;
+  /** 在庫などが尽きて取引が止まっている時間 */
+  stalled = 0;
+  /** 取引が止まっている理由 */
+  stallReason = '';
   readyWait = 0;
   portId: string | null = null;
   holdDir: THREE.Vector3;
 
-  constructor(id: number, callsign: string, type: ShipType, holdDir: THREE.Vector3) {
+  constructor(id: number, callsign: string, role: Role, size: Size, holdDir: THREE.Vector3) {
     this.id = id;
     this.callsign = callsign;
-    this.type = type;
+    this.role = role;
+    this.size = size;
+    const spec = SHIP_SIZE[size];
+    this.length = spec.length;
     this.holdDir = holdDir.clone();
-    this.patienceMax = type.patience;
-    this.patience = type.patience;
+    this.patienceMax = spec.patience;
+    this.patience = spec.patience;
+    this.cargo = Math.round(spec.cargo * (1 + (Math.random() * 2 - 1) * CARGO_JITTER));
+    const [lo, hi] = ECONOMY.buyPrice;
+    this.price = role === 'supplier' ? Math.round((lo + Math.random() * (hi - lo)) * 100) / 100 : ECONOMY.sellPrice;
+    const color = ROLE_INFO[role].color;
 
-    const L = type.length;
+    const L = this.length;
     const r = L * 0.17;
     const noseLen = L * 0.25;
     const bodyLen = L - noseLen;
     const hull = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, metalness: 0.3, roughness: 0.5 });
     const accent = new THREE.MeshStandardMaterial({
-      color: type.color, metalness: 0.2, roughness: 0.4, emissive: type.color, emissiveIntensity: 0.25,
+      color, metalness: 0.2, roughness: 0.4, emissive: color, emissiveIntensity: 0.3,
     });
 
     const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, bodyLen, 14), hull);
@@ -116,13 +128,13 @@ export class Ship {
     band.position.z = -L * 0.15;
     this.body.add(band);
 
-    if (type.kind === 'cargo') {
+    if (size === 'L') {
       for (const s of [1, -1]) {
         const pod = new THREE.Mesh(new THREE.BoxGeometry(r * 0.9, r * 0.9, bodyLen * 0.7), hull);
         pod.position.set(s * r * 1.35, 0, -L * 0.12);
         this.body.add(pod);
       }
-    } else if (type.kind === 'crew') {
+    } else if (size === 'M') {
       const wing = new THREE.Mesh(
         new THREE.BoxGeometry(L * 1.3, 0.05, r * 1.4),
         new THREE.MeshStandardMaterial({ color: 0x1b2a6b, metalness: 0.6, roughness: 0.3, emissive: 0x0a1030 }),
@@ -154,7 +166,7 @@ export class Ship {
 
     this.pathLine = new THREE.Line(
       new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(64 * 3), 3)),
-      new THREE.LineDashedMaterial({ color: type.color, dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.5 }),
+      new THREE.LineDashedMaterial({ color, dashSize: 1.2, gapSize: 0.8, transparent: true, opacity: 0.5 }),
     );
     this.pathLine.frustumCulled = false;
     this.pathLine.visible = false;
@@ -165,7 +177,17 @@ export class Ship {
   }
 
   get radius(): number {
-    return this.type.length * 0.45;
+    return this.length * 0.45;
+  }
+
+  /** 取引の進み具合 0..1 */
+  get progress(): number {
+    return this.cargo > 0 ? this.transferred / this.cargo : 1;
+  }
+
+  /** 取引予定額（$） */
+  get plannedValue(): number {
+    return this.cargo * this.price;
   }
 
   get isMoving(): boolean {
@@ -232,16 +254,16 @@ export class Ship {
 
     let sub = STATE_LABEL[this.state];
     if (this.state === 'holding') sub += ` ${Math.ceil(this.patience)}s`;
-    else if (this.state === 'docked') sub += ` ${Math.ceil(this.service)}s`;
+    else if (this.state === 'docked') sub += this.stalled > 0 ? ' 停止' : ` ${Math.round(this.progress * 100)}%`;
     else if (this.state === 'approaching' || this.state === 'departing') sub += ` → ${this.portId}`;
-    const text = `${this.callsign}|${this.type.size}|${sub}`;
+    const text = `${this.callsign}|${sub}`;
     if (text !== this.lastLabel) {
       this.lastLabel = text;
-      this.labelEl.innerHTML = `<b>${this.callsign}</b><i>${this.type.size}</i><span>${sub}</span>`;
+      this.labelEl.innerHTML = `<em class="role ${this.role}">${ROLE_INFO[this.role].short}</em><b>${this.callsign}</b><i>${this.size}</i><span>${sub}</span>`;
     }
     const cls = `ship-label s-${this.state}${selected ? ' selected' : ''}${warning ? ' warn' : ''}`
       + (this.state === 'holding' && this.patience < 12 ? ' urgent' : '')
-      + (this.state === 'ready' && this.readyWait > 20 ? ' urgent' : '');
+      + (this.state === 'docked' && this.stalled > 0 ? ' urgent' : '');
     if (this.labelEl.className !== cls) this.labelEl.className = cls;
   }
 
