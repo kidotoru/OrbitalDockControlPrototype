@@ -333,10 +333,9 @@ export class Game {
     this.reputation = Math.min(100, Math.max(0, this.reputation + delta));
   }
 
-  /** 在庫が多いほどコンシューマーが、少ないほどサプライヤーが来やすい */
+  /** サプライヤーとコンシューマーは完全ランダム（50%ずつ） */
   private pickRole(): Role {
-    const fill = this.stock / this.capacity;
-    return Math.random() < 0.3 + 0.4 * fill ? 'consumer' : 'supplier';
+    return Math.random() < 0.5 ? 'consumer' : 'supplier';
   }
 
   private spawn() {
