@@ -86,16 +86,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
 #hud > * { pointer-events: auto; }
 
+/* 画面中央上部：タイトルの下に数値を並べる */
 .topbar {
-  position: absolute; top: 0; left: 0; right: 0;
-  display: flex; align-items: center; gap: 16px;
-  padding: 10px 14px;
-  background: linear-gradient(to bottom, rgba(2, 3, 10, 0.85), rgba(2, 3, 10, 0));
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 18px 10px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  backdrop-filter: blur(6px);
   pointer-events: none;
 }
 .topbar > * { pointer-events: auto; }
 .brand { font-family: var(--mono); font-weight: 700; letter-spacing: 0.12em; font-size: 12px; color: var(--accent); }
-.stats { display: flex; gap: 14px; flex: 1; }
+.stats { display: flex; gap: 16px; white-space: nowrap; }
 .stat { display: flex; flex-direction: column; }
 .stat span { font-size: 10px; color: var(--muted); }
 .stat b { font-family: var(--mono); font-size: 16px; font-variant-numeric: tabular-nums; }
@@ -110,15 +112,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .meter i.warn { background: var(--warn); }
 .meter i.bad { background: var(--bad); }
 
-/* 左上：ドッキングポート一覧、その下にログ */
+/* 左上：ドッキングポート一覧 */
 .left-col {
-  position: absolute; top: 64px; left: 14px;
-  width: min(420px, 60vw);
+  position: absolute; top: 14px; left: 14px;
   display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
   pointer-events: none;
 }
 .left-col > .ports-panel { pointer-events: auto; width: 240px; }
-.log { display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+/* 画面中央下部：ログ（新しいものが一番下） */
+.log {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  width: min(460px, calc(100vw - 620px));
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 6px;
+  pointer-events: none;
+}
+.toast { max-width: 100%; text-align: center; }
 .toast {
   font-size: 12px; padding: 6px 10px; border-radius: 6px;
   background: var(--bg); border-left: 3px solid var(--info);
@@ -130,7 +138,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .toast.fade { opacity: 0; }
 
 .panel {
-  position: absolute; top: 64px; right: 14px; bottom: 14px;
+  position: absolute; top: 14px; right: 14px; bottom: 14px;
   width: 320px;
   display: flex; flex-direction: column; gap: 10px;
   overflow-y: auto;
@@ -224,7 +232,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- スマホ ---------- */
 @media (max-width: 760px) {
-  .topbar { flex-wrap: wrap; gap: 6px 12px; padding: 8px 12px; }
+  .topbar {
+    top: 0; left: 0; right: 0; transform: none;
+    padding: 8px 12px; border: 0; border-radius: 0;
+    background: linear-gradient(to bottom, rgba(2, 3, 10, 0.85), rgba(2, 3, 10, 0));
+  }
   .brand { display: none; }
   .stats { gap: 10px; }
   .stat b { font-size: 14px; }
@@ -232,12 +244,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .stat.money b { font-size: 16px; }
   .stat.stock { min-width: 96px; }
   .left-col { top: 58px; left: 8px; width: calc(100vw - 16px); gap: 6px; }
-  .log { gap: 4px; }
+  .log { bottom: calc(40vh + 8px); width: calc(100vw - 16px); gap: 4px; }
   .toast { font-size: 11px; padding: 4px 8px; }
   .toast:nth-child(n+3) { display: none; }
   .panel {
     top: auto; left: 0; right: 0; bottom: 0;
-    width: auto; max-height: 44vh;
+    width: auto; height: 40vh;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     background: linear-gradient(to top, rgba(2, 3, 10, 0.9), rgba(2, 3, 10, 0.6));
     gap: 8px;

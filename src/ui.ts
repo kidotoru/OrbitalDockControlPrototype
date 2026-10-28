@@ -52,8 +52,8 @@ export class UI {
           <h3>ドッキングポート</h3>
           <div class="ports" data-k="ports"></div>
         </section>
-        <div class="log" data-k="log"></div>
       </div>
+      <div class="log" data-k="log"></div>
       <div class="intro" data-k="intro">
         <div class="intro-card">
           <h1>ORBITAL DOCK CONTROL</h1>
