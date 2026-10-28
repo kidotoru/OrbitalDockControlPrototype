@@ -10,7 +10,7 @@ export const ECONOMY = {
   /** ステーションの初期在庫 */
   startStock: 300,
   /** ステーションの貯蔵上限 */
-  capacity: 1000,
+  capacity: 10000,
   /** ステーション自身のリソース消費（u/秒）。在庫が 0 になるとゲームオーバー */
   consumptionPerSec: 0.5,
   /** サプライヤーからの買い取り単価の範囲（機体ごとにランダム） */
@@ -19,6 +19,9 @@ export const ECONOMY = {
   sellPrice: 1.0,
   /** 在庫・クレジット・空き容量が尽きてから、取引を打ち切るまでの猶予 */
   stallGrace: 3,
+  /** 在庫表示を警告色にするしきい値（u）。0.5u/秒の消費で 100u ≒ 200秒、250u ≒ 500秒 */
+  lowStockBad: 100,
+  lowStockWarn: 250,
 };
 
 export const SHIP_SIZE: Record<Size, { cargo: number; rate: number; patience: number; length: number }> = {
@@ -37,7 +40,7 @@ export const REPUTATION = {
   /** 部分取引で出発（不足量の割合に比例。最大値） */
   partialTrade: -6,
   /** 待ちきれずに離脱（戦略的に待たせて帰すこともあるので、部分取引より軽め） */
-  leave: -3,
+  leave: -1,
   /** 衝突事故 */
   collision: -15,
 };

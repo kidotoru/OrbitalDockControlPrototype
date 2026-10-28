@@ -116,8 +116,10 @@ export class UI {
     this.el.stock.textContent = `${Math.floor(g.stock)} / ${g.capacity}u`;
     const fill = g.stock / g.capacity;
     this.el.stockBar.style.width = `${(fill * 100).toFixed(1)}%`;
-    this.el.stockBar.className = fill < 0.1 ? 'bad' : fill < 0.25 || fill > 0.9 ? 'warn' : 'ok';
-    this.el.stock.classList.toggle('neg', fill < 0.1);
+    const low = g.stock < ECONOMY.lowStockBad ? 'bad' : g.stock < ECONOMY.lowStockWarn ? 'warn' : '';
+    this.el.stockBar.className = low || (fill > 0.9 ? 'warn' : 'ok');
+    this.el.stock.classList.toggle('neg', low === 'bad');
+    this.el.stock.classList.toggle('warn', low === 'warn');
     this.el.rep.textContent = `${Math.round(g.reputation)}`;
     this.el.rep.className = g.reputation < 30 ? 'neg' : g.reputation < 50 ? 'warn' : '';
     this.el.clock.textContent = fmtTime(g.time);
