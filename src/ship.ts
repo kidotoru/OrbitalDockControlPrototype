@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import type { Size } from './station';
-import { SHIP_SIZE, CARGO_JITTER, ECONOMY, sellPrice } from './config';
+import { SHIP_SIZE, CARGO_JITTER, CONSUMER_CARGO_RATIO, ECONOMY, sellPrice } from './config';
 
 export type ShipState =
   | 'arriving'    // 到着中（待機ポイントへ移動）
@@ -102,7 +102,8 @@ export class Ship {
     this.holdDir = holdDir.clone();
     this.patienceMax = spec.patience;
     this.patience = spec.patience;
-    this.cargo = Math.round(spec.cargo * (1 + (Math.random() * 2 - 1) * CARGO_JITTER));
+    const base = spec.cargo * (role === 'consumer' ? CONSUMER_CARGO_RATIO : 1);
+    this.cargo = Math.round(base * (1 + (Math.random() * 2 - 1) * CARGO_JITTER));
     const [lo, hi] = ECONOMY.buyPrice;
     this.price = role === 'supplier' ? Math.round((lo + Math.random() * (hi - lo)) * 100) / 100 : sellPrice(reputation);
     const color = ROLE_INFO[role].color;

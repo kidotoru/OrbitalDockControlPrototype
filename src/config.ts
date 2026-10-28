@@ -31,6 +31,8 @@ export const SHIP_SIZE: Record<Size, { cargo: number; rate: number; patience: nu
   M: { cargo: 150, rate: 12, patience: 55, length: 4 },
   L: { cargo: 300, rate: 18, patience: 70, length: 6 },
 };
+/** コンシューマーの取引量は、同じサイズのサプライヤーに対してこの割合 */
+export const CONSUMER_CARGO_RATIO = 0.25;
 /** 積載量のばらつき（±割合） */
 export const CARGO_JITTER = 0.15;
 
