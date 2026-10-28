@@ -50,7 +50,7 @@ export class Game {
   completed = 0;
   missed = 0;
   collisions = 0;
-  timeScale = 1;
+  /** イントロ画面を閉じるまで止めておく */
   paused = true;
   selectedId: number | null = null;
   log: LogEntry[] = [];
@@ -212,7 +212,7 @@ export class Game {
   // ---------- 進行 ----------
 
   update(realDt: number) {
-    const dt = this.paused ? 0 : realDt * this.timeScale;
+    const dt = this.paused ? 0 : realDt;
     if (dt > 0) {
       const n = Math.ceil(dt / 0.04);
       for (let i = 0; i < n; i++) this.step(dt / n);

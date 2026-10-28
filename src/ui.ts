@@ -31,12 +31,6 @@ export class UI {
           <div class="stat"><span>離脱</span><b data-k="missed">0</b></div>
           <div class="stat"><span>衝突</span><b data-k="crash">0</b></div>
         </div>
-        <div class="speed" role="group" aria-label="時間倍率">
-          <button data-speed="0" title="一時停止 (Space)">❚❚</button>
-          <button data-speed="1">1×</button>
-          <button data-speed="2">2×</button>
-          <button data-speed="4">4×</button>
-        </div>
       </header>
       <div class="log" data-k="log"></div>
       <aside class="panel">
@@ -70,19 +64,9 @@ export class UI {
 
     hud.querySelector('[data-start]')!.addEventListener('click', () => {
       this.el.intro.remove();
-      this.setSpeed(1);
+      game.paused = false;
     });
 
-    hud.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
-      b.addEventListener('click', () => this.setSpeed(Number(b.dataset.speed)));
-    });
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && !this.el.intro.isConnected) {
-        e.preventDefault();
-        if (game.paused) this.setSpeed(game.timeScale || 1);
-        else this.setSpeed(0);
-      }
-    });
 
     // 詳細パネルのボタン
     this.el.detail.addEventListener('click', (e) => {
@@ -112,25 +96,6 @@ export class UI {
       this.portRows.set(p.id, row);
     }
 
-    this.updateSpeedButtons();
-  }
-
-  private setSpeed(v: number) {
-    if (v === 0) {
-      this.game.paused = true;
-    } else {
-      this.game.paused = false;
-      this.game.timeScale = v;
-    }
-    this.updateSpeedButtons();
-  }
-
-  private updateSpeedButtons() {
-    document.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
-      const v = Number(b.dataset.speed);
-      const on = v === 0 ? this.game.paused : !this.game.paused && this.game.timeScale === v;
-      b.classList.toggle('on', on);
-    });
   }
 
   update() {
