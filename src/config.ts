@@ -17,7 +17,7 @@ export const ECONOMY = {
   buyPrice: [0.5, 0.7] as [number, number],
   /** コンシューマーへの販売単価：評判 0 で min、100 で max（その間は比例） */
   sellPriceMin: 1.0,
-  sellPriceMax: 5.0,
+  sellPriceMax: 2.0,
   /** 在庫・クレジット・空き容量が尽きてから、取引を打ち切るまでの猶予 */
   stallGrace: 3,
   /** 在庫表示を警告色にするしきい値（u）。0.1u/秒の消費で 100u ≒ 1000秒、250u ≒ 2500秒 */
