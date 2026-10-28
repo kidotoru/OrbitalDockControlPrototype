@@ -32,7 +32,7 @@ export const SHIP_SIZE: Record<Size, { cargo: number; rate: number; patience: nu
   L: { cargo: 300, rate: 18, patience: 70, length: 6 },
 };
 /** 出現する船のうちサプライヤーの割合（残りはコンシューマー） */
-export const SUPPLIER_RATIO = 0.25;
+export const SUPPLIER_RATIO = 0.5;
 /** コンシューマーの取引量は、同じサイズのサプライヤーに対してこの割合 */
 export const CONSUMER_CARGO_RATIO = 0.25;
 /** 積載量のばらつき（±割合） */
