@@ -11,7 +11,7 @@ const fmtPrice = (v: number) => `$${v.toFixed(2)}`;
 
 const STATE_ORDER: Record<string, number> = { ready: 0, holding: 1, arriving: 2, approaching: 3, docked: 4, departing: 5, leaving: 6 };
 
-type ElKey = 'credit' | 'stock' | 'stockBar' | 'rep' | 'clock' | 'done' | 'missed' | 'crash'
+type ElKey = 'credit' | 'stock' | 'stockBar' | 'rep' | 'sell' | 'clock' | 'done' | 'missed' | 'crash'
   | 'traffic' | 'detail' | 'ports' | 'log' | 'intro' | 'over';
 
 export class UI {
@@ -34,6 +34,7 @@ export class UI {
           <div class="stat money"><span>クレジット</span><b data-k="credit">$0</b></div>
           <div class="stat stock"><span>リソース在庫</span><b data-k="stock">0</b><i class="meter"><i data-k="stockBar"></i></i></div>
           <div class="stat"><span>評判</span><b data-k="rep">0</b></div>
+          <div class="stat"><span>販売単価</span><b data-k="sell" class="c-consumer">$0</b></div>
           <div class="stat"><span>経過</span><b data-k="clock">00:00</b></div>
           <div class="stat minor"><span>出発</span><b data-k="done">0</b></div>
           <div class="stat minor"><span>離脱</span><b data-k="missed">0</b></div>
@@ -60,7 +61,7 @@ export class UI {
           <p>軌道ステーションの管制官として、リソースを仕入れて売り、ステーションのクレジットを増やしてください。</p>
           <ul>
             <li><b class="c-supplier">サプライヤー</b>はリソースを運んでくる船です。1u あたり ${fmtPrice(ECONOMY.buyPrice[0])}〜${fmtPrice(ECONOMY.buyPrice[1])} で買い取ります。</li>
-            <li><b class="c-consumer">コンシューマー</b>はリソースを補給しに来る船です。1u あたり ${fmtPrice(ECONOMY.sellPrice)} で売ります。</li>
+            <li><b class="c-consumer">コンシューマー</b>はリソースを補給しに来る船です。1u あたり ${fmtPrice(ECONOMY.sellPriceMin)}〜${fmtPrice(ECONOMY.sellPriceMax)} で売ります。<b>評判が高いほど高く売れます</b>（取引開始時の評判で決まります）。</li>
             <li>待機中の船を選び、サイズが合う空きポートを指定します（S &lt; M &lt; L。大きいポートには小型の船も入れます）。取引はドッキング中に少しずつ進み、終わったら出発許可を出します。</li>
             <li>在庫・クレジット・貯蔵庫の空きが尽きると、取引はその時点で打ち切られ、評判が下がります。待たせすぎた船は離脱します。衝突すると修理費がかかります。</li>
             <li>ステーション自身も毎秒 ${ECONOMY.consumptionPerSec}u のリソースを消費します。<b>在庫が 0 になるとゲームオーバー</b>です。売りすぎにも注意してください。</li>
@@ -122,6 +123,7 @@ export class UI {
     this.el.stock.classList.toggle('warn', low === 'warn');
     this.el.rep.textContent = `${Math.round(g.reputation)}`;
     this.el.rep.className = g.reputation < 30 ? 'neg' : g.reputation < 50 ? 'warn' : '';
+    this.el.sell.textContent = fmtPrice(g.sellPrice);
     this.el.clock.textContent = fmtTime(g.time);
     this.el.done.textContent = String(g.completed);
     this.el.missed.textContent = String(g.missed);
@@ -204,17 +206,16 @@ export class UI {
   /** 取引の見込み・進み具合 */
   private tradeBlock(s: Ship): string {
     const verb = s.role === 'supplier' ? '買い取り' : '販売';
-    const sign = s.role === 'supplier' ? '−' : '+';
     if (s.state === 'holding' || s.state === 'arriving' || s.state === 'approaching') {
       return `<dl class="trade">
         <div><dt>${verb}予定</dt><dd>${s.cargo}u</dd></div>
-        <div><dt>単価</dt><dd>${fmtPrice(s.price)}</dd></div>
-        <div><dt>金額</dt><dd class="${s.role}">${sign}${fmtMoney(s.plannedValue)}</dd></div>
+        <div><dt>単価${s.role === 'consumer' ? '（見込み）' : ''}</dt><dd data-live="price"></dd></div>
+        <div><dt>金額</dt><dd class="${s.role}" data-live="planned"></dd></div>
       </dl>`;
     }
     return `<dl class="trade">
       <div><dt>${verb}</dt><dd data-live="units"></dd></div>
-      <div><dt>単価</dt><dd>${fmtPrice(s.price)}</dd></div>
+      <div><dt>単価</dt><dd data-live="price"></dd></div>
       <div><dt>金額</dt><dd class="${s.role}" data-live="value"></dd></div>
     </dl>
     <div class="progress"><i data-live="bar"></i></div>`;
@@ -261,6 +262,10 @@ export class UI {
     if (s) {
       const q = (k: string) => this.el.detail.querySelector<HTMLElement>(`[data-live="${k}"]`);
       const sign = s.role === 'supplier' ? '−' : '+';
+      const price = q('price');
+      if (price) price.textContent = fmtPrice(s.price);
+      const planned = q('planned');
+      if (planned) planned.textContent = `${sign}${fmtMoney(s.plannedValue)}`;
       const units = q('units');
       if (units) units.textContent = `${Math.floor(s.transferred)} / ${s.cargo}u`;
       const value = q('value');

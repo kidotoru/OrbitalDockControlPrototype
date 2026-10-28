@@ -3,7 +3,7 @@ import type { World } from './world';
 import { buildStation, SIZE_RANK, type Port } from './station';
 import { Ship, ROLE_INFO, type Role, type Waypoint } from './ship';
 import type { Size } from './station';
-import { ECONOMY, SHIP_SIZE, REPUTATION, COLLISION_COST, spawnInterval } from './config';
+import { ECONOMY, SHIP_SIZE, REPUTATION, COLLISION_COST, spawnInterval, sellPrice } from './config';
 
 export type LogKind = 'info' | 'good' | 'warn' | 'bad';
 export interface LogEntry { id: number; time: number; text: string; kind: LogKind }
@@ -101,6 +101,11 @@ export class Game {
   }
 
   // ---------- 参照 ----------
+
+  /** 今の評判での販売単価 */
+  get sellPrice(): number {
+    return sellPrice(this.reputation);
+  }
 
   get selected(): Ship | null {
     return this.ships.find((s) => s.id === this.selectedId) ?? null;
@@ -242,8 +247,13 @@ export class Game {
       this.spawnTimer = spawnInterval(this.time, this.reputation) * (0.7 + Math.random() * 0.6);
     }
 
+    const currentSellPrice = this.sellPrice;
     for (const s of this.ships) {
       s.update(dt);
+      // コンシューマーの販売単価はドッキングするまで評判に追従する
+      if (s.role === 'consumer' && (s.state === 'arriving' || s.state === 'holding' || s.state === 'approaching')) {
+        s.price = currentSellPrice;
+      }
       if (s.state === 'holding') {
         s.patience -= dt;
         if (s.patience <= 0) this.shipGivesUp(s);
@@ -343,7 +353,7 @@ export class Game {
     const size: Size = r < 0.4 ? 'S' : r < 0.75 ? 'M' : 'L';
     const role = this.pickRole();
     const dir = this.pickHoldDir();
-    const ship = new Ship(this.nextId++, this.makeCallsign(), role, size, dir);
+    const ship = new Ship(this.nextId++, this.makeCallsign(), role, size, dir, this.reputation);
     ship.position.copy(dir).multiplyScalar(SPAWN_R);
     ship.body.lookAt(ship.position.clone().negate());
     const hold = dir.clone().multiplyScalar(HOLD_R);

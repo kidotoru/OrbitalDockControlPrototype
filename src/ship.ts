@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import type { Size } from './station';
-import { SHIP_SIZE, CARGO_JITTER, ECONOMY } from './config';
+import { SHIP_SIZE, CARGO_JITTER, ECONOMY, sellPrice } from './config';
 
 export type ShipState =
   | 'arriving'    // 到着中（待機ポイントへ移動）
@@ -75,8 +75,11 @@ export class Ship {
   readonly patienceMax: number;
   /** 予定取引量（u） */
   readonly cargo: number;
-  /** 取引単価（$/u）。サプライヤーは買い取り価格、コンシューマーは販売価格 */
-  readonly price: number;
+  /**
+   * 取引単価（$/u）。サプライヤーは買い取り価格（固定）。
+   * コンシューマーは販売価格で、ドッキングするまでは評判に合わせて変わり、取引開始時に確定する。
+   */
+  price: number;
   /** 取引済み量（u） */
   transferred = 0;
   /** 取引済み金額（$） */
@@ -89,7 +92,7 @@ export class Ship {
   portId: string | null = null;
   holdDir: THREE.Vector3;
 
-  constructor(id: number, callsign: string, role: Role, size: Size, holdDir: THREE.Vector3) {
+  constructor(id: number, callsign: string, role: Role, size: Size, holdDir: THREE.Vector3, reputation: number) {
     this.id = id;
     this.callsign = callsign;
     this.role = role;
@@ -101,7 +104,7 @@ export class Ship {
     this.patience = spec.patience;
     this.cargo = Math.round(spec.cargo * (1 + (Math.random() * 2 - 1) * CARGO_JITTER));
     const [lo, hi] = ECONOMY.buyPrice;
-    this.price = role === 'supplier' ? Math.round((lo + Math.random() * (hi - lo)) * 100) / 100 : ECONOMY.sellPrice;
+    this.price = role === 'supplier' ? Math.round((lo + Math.random() * (hi - lo)) * 100) / 100 : sellPrice(reputation);
     const color = ROLE_INFO[role].color;
 
     const L = this.length;

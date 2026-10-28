@@ -15,8 +15,9 @@ export const ECONOMY = {
   consumptionPerSec: 0.1,
   /** サプライヤーからの買い取り単価の範囲（機体ごとにランダム） */
   buyPrice: [0.5, 0.7] as [number, number],
-  /** コンシューマーへの販売単価 */
-  sellPrice: 1.0,
+  /** コンシューマーへの販売単価：評判 0 で min、100 で max（その間は比例） */
+  sellPriceMin: 1.0,
+  sellPriceMax: 5.0,
   /** 在庫・クレジット・空き容量が尽きてから、取引を打ち切るまでの猶予 */
   stallGrace: 3,
   /** 在庫表示を警告色にするしきい値（u）。0.1u/秒の消費で 100u ≒ 1000秒、250u ≒ 2500秒 */
@@ -44,6 +45,12 @@ export const REPUTATION = {
   /** 衝突事故 */
   collision: -15,
 };
+
+/** 評判に応じた販売単価（$/u）。取引開始時に確定する */
+export function sellPrice(reputation: number): number {
+  const p = ECONOMY.sellPriceMin + (ECONOMY.sellPriceMax - ECONOMY.sellPriceMin) * (reputation / 100);
+  return Math.round(p * 100) / 100;
+}
 
 /** 衝突事故の修理費 */
 export const COLLISION_COST = 200;
