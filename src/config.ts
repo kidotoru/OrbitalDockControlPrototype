@@ -12,14 +12,14 @@ export const ECONOMY = {
   /** ステーションの貯蔵上限 */
   capacity: 10000,
   /** ステーション自身のリソース消費（u/秒）。在庫が 0 になるとゲームオーバー */
-  consumptionPerSec: 0.5,
+  consumptionPerSec: 0.1,
   /** サプライヤーからの買い取り単価の範囲（機体ごとにランダム） */
   buyPrice: [0.5, 0.7] as [number, number],
   /** コンシューマーへの販売単価 */
   sellPrice: 1.0,
   /** 在庫・クレジット・空き容量が尽きてから、取引を打ち切るまでの猶予 */
   stallGrace: 3,
-  /** 在庫表示を警告色にするしきい値（u）。0.5u/秒の消費で 100u ≒ 200秒、250u ≒ 500秒 */
+  /** 在庫表示を警告色にするしきい値（u）。0.1u/秒の消費で 100u ≒ 1000秒、250u ≒ 2500秒 */
   lowStockBad: 100,
   lowStockWarn: 250,
 };
@@ -36,7 +36,7 @@ export const CARGO_JITTER = 0.15;
 export const REPUTATION = {
   start: 20,
   /** 予定量どおりに取引できた */
-  fullTrade: +1,
+  fullTrade: +3,
   /** 部分取引で出発（不足量の割合に比例。最大値） */
   partialTrade: -6,
   /** 待ちきれずに離脱（戦略的に待たせて帰すこともあるので、部分取引より軽め） */
