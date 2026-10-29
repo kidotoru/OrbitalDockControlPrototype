@@ -33,8 +33,8 @@ export const SHIP_SIZE: Record<Size, { cargo: number; rate: number; patience: nu
 };
 /** 出現する船のうちサプライヤーの割合（残りはコンシューマー）。時間で min〜max を行き来する */
 export const SUPPLIER_RATIO = {
-  min: 0.1,
-  max: 0.3,
+  min: 0.2,
+  max: 0.6,
   /** 大きな波の周期（秒）と、重ねる小さな波の周期（秒） */
   period: 240,
   subPeriod: 97,
@@ -50,7 +50,7 @@ export function supplierRatio(t: number): number {
   return (r.min + r.max) / 2 + ((r.max - r.min) / 2) * w;
 }
 /** コンシューマーの取引量は、同じサイズのサプライヤーに対してこの割合 */
-export const CONSUMER_CARGO_RATIO = 0.25;
+export const CONSUMER_CARGO_RATIO = 0.5;
 /** 積載量のばらつき（±割合） */
 export const CARGO_JITTER = 0.15;
 
