@@ -412,13 +412,29 @@ export class Game {
     }
   }
 
+  /** 待機中（到着中を含む）の船の入港を拒否して、すぐに離脱させる */
+  dismiss(shipId: number): boolean {
+    const s = this.shipById(shipId);
+    if (!s || (s.state !== 'holding' && s.state !== 'arriving')) return false;
+    this.sendAway(s);
+    this.changeReputation(REPUTATION.dismiss);
+    this.missed++;
+    this.addLog(`${s.callsign} の入港を拒否（評判 ${REPUTATION.dismiss}）`, 'warn');
+    return true;
+  }
+
   private shipGivesUp(s: Ship) {
-    s.state = 'leaving';
-    s.patience = 0;
-    s.setPath([{ p: s.position.clone().setLength(SPAWN_R + 20), speed: 12 }], () => { s.state = 'gone'; });
+    this.sendAway(s);
     this.changeReputation(REPUTATION.leave);
     this.missed++;
     this.addLog(`${s.callsign} が待ちきれず離脱（評判 ${REPUTATION.leave}）`, 'bad');
+  }
+
+  /** ステーションから遠ざかる方向へ退場させる */
+  private sendAway(s: Ship) {
+    s.state = 'leaving';
+    s.patience = 0;
+    s.setPath([{ p: s.position.clone().setLength(SPAWN_R + 20), speed: 12 }], () => { s.state = 'gone'; });
   }
 
   private checkProximity() {

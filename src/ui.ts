@@ -1,5 +1,5 @@
 import { fmtMoney, type Game } from './game';
-import { ECONOMY, SUPPLIER_RATIO } from './config';
+import { ECONOMY, SUPPLIER_RATIO, REPUTATION } from './config';
 import { ROLE_INFO, STATE_LABEL, type Ship } from './ship';
 
 const fmtTime = (t: number) => {
@@ -67,6 +67,7 @@ export class UI {
             <li>在庫・クレジット・貯蔵庫の空きが尽きると、取引はその時点で打ち切られ、評判が下がります。待たせすぎた船は離脱します。衝突すると修理費がかかります。</li>
             <li>ステーション自身も毎秒 ${ECONOMY.consumptionPerSec}u のリソースを消費します。<b>在庫が 0 になるとゲームオーバー</b>です。売りすぎにも注意してください。</li>
             <li>評判が高いほど船がたくさん来ます。</li>
+            <li>待機中の船は「入港拒否」ですぐに帰せます（評判 ${REPUTATION.dismiss}）。待たせて自然に離脱させると評判 ${REPUTATION.leave} です。</li>
           </ul>
           <button class="primary" data-start>管制開始</button>
         </div>
@@ -90,6 +91,7 @@ export class UI {
       if (!sel) return;
       if (t.dataset.assign) game.assign(sel.id, t.dataset.assign);
       if (t.dataset.depart != null) game.clearDeparture(sel.id);
+      if (t.dataset.dismiss != null) game.dismiss(sel.id);
       if (t.dataset.deselect != null) game.select(null);
     });
 
@@ -239,7 +241,8 @@ export class UI {
             const ok = g.canAssign(s, p);
             const why = p.state !== 'free' ? '使用中' : !ok ? 'サイズ不可' : '空き';
             return `<button data-assign="${p.id}" ${ok ? '' : 'disabled'}><b>${p.id}</b><span>${p.size}</span><small>${why}</small></button>`;
-          }).join('')}</div>`;
+          }).join('')}</div>
+          <button class="dismiss" data-dismiss>入港拒否<small>すぐに離脱させる・評判 ${REPUTATION.dismiss}</small></button>`;
         } else if (s.state === 'approaching') {
           body = `<p class="prompt">${s.portId} へ進入中</p>`;
         } else if (s.state === 'docked') {

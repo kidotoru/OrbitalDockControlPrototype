@@ -62,6 +62,8 @@ export const REPUTATION = {
   partialTrade: -6,
   /** 待ちきれずに離脱（戦略的に待たせて帰すこともあるので、部分取引より軽め） */
   leave: -1,
+  /** 管制官が入港を拒否して即座に帰した */
+  dismiss: -2,
   /** 衝突事故 */
   collision: -15,
 };

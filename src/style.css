@@ -188,6 +188,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
   background: var(--ok); color: #04210f; font-weight: 700; font-size: 14px;
 }
 .primary.depart { animation: glow 1.2s ease-in-out infinite; }
+.dismiss {
+  width: 100%; margin-top: 8px; padding: 7px 10px; border-radius: 8px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.5); color: var(--bad);
+  font-size: 13px; font-weight: 600;
+}
+.dismiss small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.dismiss:hover { background: rgba(248, 113, 113, 0.16); }
 @keyframes glow { 50% { box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.25); } }
 
 .traffic, .ports { display: flex; flex-direction: column; gap: 4px; }
