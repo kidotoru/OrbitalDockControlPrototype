@@ -211,7 +211,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ship-row .cs { font-family: var(--mono); font-weight: 600; }
 .ship-row .sz, .port-row .sz { font-family: var(--mono); color: var(--muted); }
 .ship-row .st { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ship-row.s-holding .st { color: var(--info); }
+.ship-row.s-holding .st { color: var(--info); font-weight: 600; }
 .ship-row.s-ready .st { color: var(--ok); font-weight: 600; }
 .ship-row.warn .st { color: var(--bad); }
 .ship-row.selected, .port-row.target { border-color: var(--accent); background: rgba(124, 196, 255, 0.12); }
