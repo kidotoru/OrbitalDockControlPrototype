@@ -34,7 +34,7 @@ export const SHIP_SIZE: Record<Size, { cargo: number; rate: number; patience: nu
 /** 出現する船のうちサプライヤーの割合（残りはコンシューマー）。時間で min〜max を行き来する */
 export const SUPPLIER_RATIO = {
   min: 0.1,
-  max: 0.5,
+  max: 0.3,
   /** 大きな波の周期（秒）と、重ねる小さな波の周期（秒） */
   period: 240,
   subPeriod: 97,

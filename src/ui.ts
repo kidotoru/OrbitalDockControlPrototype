@@ -1,5 +1,5 @@
 import { fmtMoney, type Game } from './game';
-import { ECONOMY } from './config';
+import { ECONOMY, SUPPLIER_RATIO } from './config';
 import { ROLE_INFO, STATE_LABEL, type Ship } from './ship';
 
 const fmtTime = (t: number) => {
@@ -61,7 +61,7 @@ export class UI {
           <h1>ORBITAL DOCK CONTROL</h1>
           <p>軌道ステーションの管制官として、リソースを仕入れて売り、ステーションのクレジットを増やしてください。</p>
           <ul>
-            <li><b class="c-supplier">サプライヤー</b>はリソースを運んでくる船です。1u あたり ${fmtPrice(ECONOMY.buyPrice[0])}〜${fmtPrice(ECONOMY.buyPrice[1])} で買い取ります。来る船に占めるサプライヤーの割合は、時間とともに 10%〜50% の間で上下します（上部の「供給船の割合」）。</li>
+            <li><b class="c-supplier">サプライヤー</b>はリソースを運んでくる船です。1u あたり ${fmtPrice(ECONOMY.buyPrice[0])}〜${fmtPrice(ECONOMY.buyPrice[1])} で買い取ります。来る船に占めるサプライヤーの割合は、時間とともに ${Math.round(SUPPLIER_RATIO.min * 100)}%〜${Math.round(SUPPLIER_RATIO.max * 100)}% の間で上下します（上部の「供給船の割合」）。</li>
             <li><b class="c-consumer">コンシューマー</b>はリソースを補給しに来る船です。1u あたり ${fmtPrice(ECONOMY.sellPriceMin)}〜${fmtPrice(ECONOMY.sellPriceMax)} で売ります。<b>評判が高いほど高く売れます</b>（取引開始時の評判で決まります）。</li>
             <li>待機中の船を選び、サイズが合う空きポートを指定します（S &lt; M &lt; L。大きいポートには小型の船も入れます）。取引はドッキング中に少しずつ進み、終わったら出発許可を出します。</li>
             <li>在庫・クレジット・貯蔵庫の空きが尽きると、取引はその時点で打ち切られ、評判が下がります。待たせすぎた船は離脱します。衝突すると修理費がかかります。</li>
