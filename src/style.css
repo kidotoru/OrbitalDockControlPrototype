@@ -259,7 +259,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
     background: linear-gradient(to top, rgba(2, 3, 10, 0.9), rgba(2, 3, 10, 0.6));
     gap: 8px;
   }
-  .left-col > .ports-panel { width: min(300px, 100%); padding: 6px; }
+  .left-col > .ports-panel { width: 100%; padding: 6px; }
+  .port-row .ps { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ports-panel h3 { display: none; }
   .ship-row { padding: 8px; }
   .port-row { padding: 5px 6px; font-size: 11px; }
