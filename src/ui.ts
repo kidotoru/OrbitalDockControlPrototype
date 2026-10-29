@@ -194,7 +194,7 @@ export class UI {
   private updatePorts() {
     const g = this.game;
     const sel = g.selected;
-    const assigning = sel && (sel.state === 'holding' || sel.state === 'arriving');
+    const assigning = sel && sel.state === 'holding';
     for (const p of g.ports) {
       const row = this.portRows.get(p.id)!;
       const occ = g.shipById(p.shipId);
@@ -229,20 +229,23 @@ export class UI {
     const g = this.game;
     const s = g.selected;
     const portsSig = g.ports.map((p) => p.state[0]).join('');
-    const sig = s ? `${s.id}|${s.state}|${s.state === 'holding' || s.state === 'arriving' ? portsSig : ''}` : 'none';
+    const sig = s ? `${s.id}|${s.state}|${s.state === 'holding' ? portsSig : ''}` : 'none';
     if (sig !== this.detailSig) {
       this.detailSig = sig;
       if (!s) {
         this.el.detail.innerHTML = `<div class="hint">宇宙機を選択してください<small>リストの行、または3D上のラベルをタップ</small></div>`;
       } else {
         let body = '';
-        if (s.state === 'holding' || s.state === 'arriving') {
+        const dismissBtn = `<button class="dismiss" data-dismiss>入港拒否<small>すぐに離脱させる・評判 ${REPUTATION.dismiss}</small></button>`;
+        if (s.state === 'arriving') {
+          body = `<p class="prompt">待機位置へ移動中<small class="sub">着いたらドッキングポートを指定できます</small></p>${dismissBtn}`;
+        } else if (s.state === 'holding') {
           body = `<p class="prompt">ドッキングポートを指定</p><div class="assign">${g.ports.map((p) => {
             const ok = g.canAssign(s, p);
             const why = p.state !== 'free' ? '使用中' : !ok ? 'サイズ不可' : '空き';
             return `<button data-assign="${p.id}" ${ok ? '' : 'disabled'}><b>${p.id}</b><span>${p.size}</span><small>${why}</small></button>`;
           }).join('')}</div>
-          <button class="dismiss" data-dismiss>入港拒否<small>すぐに離脱させる・評判 ${REPUTATION.dismiss}</small></button>`;
+          ${dismissBtn}`;
         } else if (s.state === 'approaching') {
           body = `<p class="prompt">${s.portId} へ進入中</p>`;
         } else if (s.state === 'docked') {

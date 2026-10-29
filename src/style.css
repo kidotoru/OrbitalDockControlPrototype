@@ -171,6 +171,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .progress i.bad { background: var(--bad); }
 .x { background: none; border: 0; font-size: 20px; color: var(--muted); padding: 0 4px; }
 .prompt { margin: 8px 0; font-size: 13px; }
+.prompt .sub { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
 .prompt b { font-family: var(--mono); color: var(--accent); margin-left: 6px; }
 .assign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .assign button {

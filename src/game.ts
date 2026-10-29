@@ -130,7 +130,8 @@ export class Game {
   }
 
   canAssign(ship: Ship, port: Port): boolean {
-    return (ship.state === 'holding' || ship.state === 'arriving')
+    // 待機位置に着いてからでないとポートを指定できない
+    return ship.state === 'holding'
       && port.state === 'free'
       && SIZE_RANK[ship.size] <= SIZE_RANK[port.size];
   }
@@ -221,7 +222,11 @@ export class Game {
       this.assign(sel.id, port.id);
       return;
     }
-    if (sel && (sel.state === 'holding' || sel.state === 'arriving')) {
+    if (sel && sel.state === 'arriving') {
+      this.addLog(`${sel.callsign} は到着中です。待機位置に着いてからポートを指定してください`, 'warn');
+      return;
+    }
+    if (sel && sel.state === 'holding') {
       if (port.state !== 'free') this.addLog(`${port.id} は使用中です`, 'warn');
       else this.addLog(`${sel.callsign}（${sel.size}）は ${port.id}（${port.size}）に入りません`, 'warn');
       return;
@@ -511,7 +516,7 @@ export class Game {
   private updateVisuals(realDt: number) {
     this.pulse += realDt;
     const sel = this.selected;
-    const assigning = sel && (sel.state === 'holding' || sel.state === 'arriving');
+    const assigning = sel && sel.state === 'holding';
 
     for (const s of this.ships) s.updateVisuals(s.id === this.selectedId, this.warnings.has(s.id));
 
