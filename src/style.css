@@ -223,8 +223,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .port-row.dim { opacity: 0.4; }
 
 /* ---------- イントロ ---------- */
-.intro { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(2, 3, 10, 0.55); padding: 16px; }
-.intro-card { max-width: 520px; background: var(--bg-solid); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+/* 画面より長いときは中身をスクロールできるようにする（中央寄せは margin:auto で行い、上が切れないようにする） */
+.intro {
+  position: absolute; inset: 0; display: flex; background: rgba(2, 3, 10, 0.55);
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+}
+.intro-card { margin: auto; max-width: 520px; background: var(--bg-solid); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
 .over .intro-card h1 { color: var(--bad); }
 .intro-card h1 { margin: 0 0 10px; font-family: var(--mono); font-size: 18px; letter-spacing: 0.12em; color: var(--accent); }
 .intro-card p { font-size: 14px; line-height: 1.6; margin: 0 0 10px; }
@@ -262,4 +267,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .assign button { flex-direction: row; justify-content: center; gap: 6px; padding: 9px 4px; }
   .prompt { margin: 6px 0; }
   .port-row { grid-template-columns: auto auto 1fr; gap: 4px; }
+  .intro-card { padding: 16px; }
+  .intro-card h1 { font-size: 16px; }
+  .intro-card p { font-size: 13px; line-height: 1.5; }
+  .intro-card ul { font-size: 12px; line-height: 1.5; padding-left: 16px; }
+  .intro-card li + li { margin-top: 4px; }
 }
